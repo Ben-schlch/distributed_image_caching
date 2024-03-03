@@ -1,0 +1,46 @@
+Verteiltes Caching-System mit Konsistenzgewährleistung für Bilddaten
+
+Client-Anteil:
+• Anfrage und Empfang von Bilddaten: Implementieren Sie Client-Funktionen zum
+Anfordern von Bildern aus dem Cache. Bei einem Cache-Miss sollte die Anfrage an das
+Backend-System weitergeleitet werden, um das Bild zu holen und im Cache zu speichern.
+• Cache-Aktualisierung: Entwickeln Sie Mechanismen, mit denen der Client über
+Änderungen an bereits angeforderten Bildern informiert wird, um sicherzustellen, dass
+stets die aktuellsten Versionen der Bilder angezeigt werden.
+
+Cluster-Anteil:
+• Effizientes Caching und Speicherung: Entwerfen Sie das Caching-System so, dass
+Bilddaten effizient gespeichert und bei Bedarf schnell bereitgestellt werden können.
+Berücksichtigen Sie dabei Techniken zur Reduzierung des Speicherbedarfs, wie z.B.
+Kompression oder deduplizierung.
+• Konsistenzmechanismen: Implementieren Sie Konsistenzmechanismen, die
+sicherstellen, dass alle Clients stets die neueste Version eines Bildes erhalten, selbst wenn
+dieses kürzlich geändert wurde. Dies könnte durch Invalidierung von Cache-Einträgen,
+Versionierung von Bilddaten oder andere Kohärenzprotokolle erreicht werden.
+• Ausfallsicherheit und Skalierbarkeit: Das Caching-System sollte ausfallsicher sein und
+die Möglichkeit bieten, bei steigendem Anfragevolumen oder zur Verbesserung der
+Ausfallsicherheit weitere Cache-Server hinzuzufügen.
+
+Bewertung:
+• Cache-Effizienz: Bewerten Sie die Trefferquote des Caches und die Auswirkungen auf die
+Latenzzeiten beim Abrufen von Bildern. Analysieren Sie, wie effektiv das Caching-System
+die Backend-Belastung reduziert.
+• Konsistenz und Aktualität: Untersuchen Sie, wie konsistent das System
+Bildaktualisierungen handhabt und wie schnell geänderte Bilder den Clients zur Verfügung
+gestellt werden.
+• Ausfallsicherheit und Skalierbarkeit: Bewerten Sie die Robustheit des Systems
+gegenüber Ausfällen und die Fähigkeit des Systems, seine Leistung durch Hinzufügen
+weiterer Ressourcen linear zu skalieren.
+Anforderungen:
+• Schneller Zugriff auf Bilddaten: Das System sollte in der Lage sein, Bilddaten mit
+minimaler Latenz bereitzustellen, um eine reibungslose Benutzererfahrung zu
+gewährleisten, wobei die maximale Antwortzeit für das Abrufen eines Bildes aus dem
+Cache klar definiert sein sollte.
+• Garantierte Bildaktualität: Änderungen an Bildern müssen im gesamten System
+konsistent nachvollzogen werden, sodass Benutzer stets die aktuellsten Versionen sehen.
+Strategien zur Cache-Invalidierung oder -Aktualisierung müssen effektiv implementiert
+werden, um veraltete Daten zu vermeiden.
+• Robustheit und Skalierbarkeit: Das System muss hohe Verfügbarkeit gewährleisten und
+die Fähigkeit besitzen, sich an steigende Lasten anzupassen, ohne dass es zu einem
+signifikanten Leistungsabfall kommt. Dies beinhaltet Mechanismen zur schnellen Erholung
+von Serverausfällen und zur dynamischen Lastverteilung.

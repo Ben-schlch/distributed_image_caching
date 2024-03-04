@@ -43,11 +43,14 @@ import logging
 from typing import Optional
 from client.cache import CacheStrategy
 
+
 logging.basicConfig(level=logging.INFO)
 
+
 class Client:
-    def __init__(self, backend_server_url: str, strategy: CacheStrategy):
+    def __init__(self, backend_server_url: str, strategy: CacheStrategy, debug_local: bool = False):
         self.backend_server_url = backend_server_url
+        self.debug_local = debug_local
         self.strategy = strategy
         self.cache_hits = 0
         self.cache_misses = 0
@@ -70,23 +73,46 @@ class Client:
             return await self.fetch_from_backend(image_id)
 
     async def fetch_from_backend(self, image_id: str) -> bytes:
-        if not self.session: raise RuntimeError("Session not initialized.")
-        try:
-            async with self.session.get(f"{self.backend_server_url}/images/{image_id}") as response:
-                response.raise_for_status()  # Ensure we handle non-2xx responses
-                image_data = await response.read()
-                if self.should_cache_image(image_data):
+        if self.debug_local:
+            image_path = f"{self.backend_server_url}/{image_id}.jpg"
+
+            try:
+                with open(image_path, 'rb') as image_file:
+                    image_data = image_file.read()
+
+                if self.should_cache_image():
                     self.strategy.put(image_id, image_data)
                 return image_data
-        except aiohttp.ClientError as e:
-            logging.error(f"Failed to fetch image {image_id} from backend: {e}")
-            raise
 
-    def should_cache_image(self, image_data: bytes) -> bool:
-        return len(image_data) < 1_000_000  # Cache images smaller than 1MB
+            except Exception as e:
+                logging.error(f"Failed to fetch image {image_id} from local debug: {e}")
+                raise
+
+        else:
+            if not self.session:
+                raise RuntimeError("Session not initialized.")
+            try:
+                async with self.session.get(f"{self.backend_server_url}/images/{image_id}") as response:
+                    response.raise_for_status()  # Ensure we handle non-2xx responses
+                    image_data = await response.read()
+
+                    if self.should_cache_image():
+                        self.strategy.put(image_id, image_data)
+                    return image_data
+            except aiohttp.ClientError as e:
+                logging.error(f"Failed to fetch image {image_id} from backend: {e}")
+                raise
+
+    def should_cache_image(self) -> bool:
+        return len(self.strategy.cache) < self.strategy.capacity
 
     async def listen_for_updates(self):
-        if not self.session: raise RuntimeError("Session not initialized.")
+        # deactivate when running locally
+        if self.debug_local:
+            return
+
+        if not self.session:
+            raise RuntimeError("Session not initialized.")
         async with self.session.get(f"{self.backend_server_url}/events") as response:
             async for line in response.content:
                 if line.startswith(b"data:"):

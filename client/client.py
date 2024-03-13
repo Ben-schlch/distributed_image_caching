@@ -74,14 +74,13 @@ class Client:
 
     async def fetch_from_backend(self, image_id: str) -> bytes:
         if self.debug_local:
-            image_path = f"{self.backend_server_url}/{image_id}.jpg"
+            image_path = f"{self.backend_server_url}/test_{image_id}.jpeg"
 
             try:
                 with open(image_path, 'rb') as image_file:
                     image_data = image_file.read()
 
-                if self.should_cache_image():
-                    self.strategy.put(image_id, image_data)
+                self.strategy.put(image_id, image_data)
                 return image_data
 
             except Exception as e:
@@ -96,8 +95,7 @@ class Client:
                     response.raise_for_status()  # Ensure we handle non-2xx responses
                     image_data = await response.read()
 
-                    if self.should_cache_image():
-                        self.strategy.put(image_id, image_data)
+                    self.strategy.put(image_id, image_data)
                     return image_data
             except aiohttp.ClientError as e:
                 logging.error(f"Failed to fetch image {image_id} from backend: {e}")

@@ -3,7 +3,7 @@ Verteiltes Caching-System mit Konsistenzgewährleistung für Bilddaten
 Client-Anteil:
 • Anfrage und Empfang von Bilddaten: Implementieren Sie Client-Funktionen zum
 Anfordern von Bildern aus dem Cache. Bei einem Cache-Miss sollte die Anfrage an das
-Backend-System weitergeleitet werden, um das Bild zu holen und im Cache zu speichern.
+Backend-System weitergeleitet werden, um das  b zu holen und im Cache zu speichern.
 • Cache-Aktualisierung: Entwickeln Sie Mechanismen, mit denen der Client über
 Änderungen an bereits angeforderten Bildern informiert wird, um sicherzustellen, dass
 stets die aktuellsten Versionen der Bilder angezeigt werden.

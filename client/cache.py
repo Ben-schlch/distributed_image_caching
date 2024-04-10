@@ -13,7 +13,11 @@ class CacheStrategy:
         """Check if a cached item has expired based on TTL."""
         if self.ttl is None or key not in self.cache:
             return False
-        _, timestamp = self.cache[key]
+        # timestamp is the last element in the tuple of between 2 and 3 elements
+        if len(self.cache[key]) == 2:
+            _, timestamp = self.cache[key]
+        else:
+            _, timestamp, _ = self.cache[key]
         return (time.time() - timestamp) > self.ttl
 
     def get(self, key: str) -> Any:
@@ -45,36 +49,32 @@ class LRUCache(CacheStrategy):
             self.cache.pop(next(iter(self.cache)))  # Remove the least recently used item
         self.cache[key] = (value, time.time())  # Insert item with current timestamp
 
-
 class LFUCache(CacheStrategy):
     """Least Frequently Used (LFU) Cache Implementation."""
 
     def __init__(self, ttl=None):
         super().__init__(ttl)
-        self.freq = {}  # Frequency of accesses for each cache item
 
     def get(self, key: str) -> Any:
         if key in self.cache and not self.is_expired(key):
-            self.freq[key] += 1
-            return self.cache[key][0]
+            value, timestamp, freq = self.cache[key]
+            self.cache[key] = (value, timestamp, freq + 1)  # Increment frequency
+            return value
         elif key in self.cache:
             self.cache.pop(key)  # Remove expired item
-            self.freq.pop(key)
         return None
 
     def put(self, key: str, value: Any):
         if len(self.cache) >= self.capacity and key not in self.cache:
             self.evict()  # Evict the least frequently used item
-        self.cache[key] = (value, time.time())  # Insert item with current timestamp
-        self.freq[key] = self.freq.get(key, 0) + 1
+        timestamp = time.time()
+        self.cache[key] = (value, timestamp, 1)  # Initialize with frequency 1
 
     def evict(self):
         """Remove the least frequently used item."""
-        least_freq = min(self.freq.values())
-        least_freq_keys = [k for k, v in self.freq.items() if v == least_freq]
-        oldest_key = min(least_freq_keys, key=lambda k: self.cache[k][1])
-        self.cache.pop(oldest_key)
-        self.freq.pop(oldest_key)
+        min_freq_key = min(self.cache, key=lambda k: self.cache[k][2])  # Find min frequency key
+        self.cache.pop(min_freq_key)
+
 
 
 class RandomReplacement(CacheStrategy):

@@ -14,21 +14,26 @@ import asyncio
 # import matplotlib
 # matplotlib.use('TkAgg')
 
+# set logging level to INFO
+import logging
+
+logging.basicConfig(level=logging.INFO)
 
 # Configuration
 random.seed(42)  # For reproducibility
 total_requests = 50000
-image_id_range = (0, 9999)
+image_id_range = (1, 9999)
 # intitalize array for image id range with all zeros
 image_request_count = np.zeros(image_id_range[1] + 1)
 
-backend_urls = [r"C:\Users\bensc\Projects\verteilte_system\images"]  # local debug
+# backend_urls = [r"C:\Users\bensc\Projects\verteilte_system\images"]  # local debug
+backend_urls = [r"192.168.180.65:8002", "192.168.180.66:8002", "192.168.180.67:8002"]  # local debug
 
 distributions = {
     "gaussian": {"mean": 5000, "std": 1200, "image_request_count": image_request_count.copy()},
     "random": {"low": image_id_range[0], "high": image_id_range[1],
                "image_request_count": image_request_count.copy()},
-    "exponential": {"scale": 1200, "offset": 0, "image_request_count": image_request_count.copy()}
+    "exponential": {"scale": 1200, "offset": 1, "image_request_count": image_request_count.copy()}
 }
 
 
@@ -42,10 +47,10 @@ def generate_image_id(distribution_name, params):
     elif distribution_name == "exponential":
         result = int(random.expovariate(1 / params["scale"])) + params["offset"]
 
-    if distribution_name == "random":
-        if result > image_id_range[1]:
-            print("x")
-    image_id_generated = result if image_id_range[0] <= result <= image_id_range[1] else 0
+    # if distribution_name == "random":
+    #     if result > image_id_range[1]:
+    #         print("x")
+    image_id_generated = result if image_id_range[0] <= result <= image_id_range[1] else 1
     return image_id_generated
 
 
@@ -65,6 +70,8 @@ async def simulate_requests(client, distribution_name, params):
 
 
 async def main():
+    server_response_times = []
+
     clients = {
         "LFU": Client(backend_urls, LFUCache(), debug_local=True),
         "LRU": Client(backend_urls, LRUCache(), debug_local=True),
@@ -81,8 +88,16 @@ async def main():
             client.strategy.cache = {}
             client.cache_hits = 0
             client.cache_misses = 0
+            client.local_response_times = []
+            client.server_response_times = []
             hit_rates = await simulate_requests(client, distribution_name, params)
             plt.plot(hit_rates, label=name)
+
+            server_response_times.append(client.server_response_times)
+
+            print(f"{distribution_name} - {name} - Simulating requests complete")
+            client.evaluate_performance()
+            print("\n\n")
 
         plt.xlabel('Request Count')
         plt.ylabel('Cache Hit Rate')
@@ -98,6 +113,13 @@ async def main():
         plt.ylabel('Request Count')
         plt.title(f'Image Request Count for {distribution_name.capitalize()} Distribution')
         plt.show()
+
+    # boxplot of server response times across all distributions and client caching strategies
+    plt.clf()
+    plt.figure(figsize=(10, 6))
+    plt.boxplot(server_response_times)
+    plt.title('Server Response Times in ms across all tested distributions and client caching strategies')
+
 
 
 asyncio.run(main())

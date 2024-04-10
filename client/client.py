@@ -7,6 +7,7 @@ from client.cache import CacheStrategy
 
 logging.basicConfig(level=logging.INFO)
 
+
 class Client:
     def __init__(self, backend_server_urls: list, strategy: CacheStrategy, debug_local: bool = False):
         self.backend_server_urls = backend_server_urls  # A list of URLs for the Raspberry Pis
@@ -55,7 +56,7 @@ class Client:
                         return image_data, time.time() - start_time
 
                 else:
-                    async with self.session.get(f"{server_url}/images/{image_id}") as response:
+                    async with self.session.get(f"{server_url}/distcache/images/{image_id}") as response:
                         response.raise_for_status()
                         image_data = await response.read()
                         self.strategy.put(image_id, image_data)
@@ -88,7 +89,7 @@ class Client:
             return  # Skip in debug mode
 
         async with aiohttp.ClientSession() as session:
-            async with session.get(f"{server_url}/events", headers={'Accept': 'text/event-stream'}) as response:
+            async with session.get(f"{server_url}/distcache/events", headers={'Accept': 'text/event-stream'}) as response:
                 while True:
                     line = await response.content.readline()
                     if not line:
@@ -98,6 +99,7 @@ class Client:
                         image_id = data.removeprefix("data:").strip()
                         if image_id in self.strategy.cache.keys():
                             self.strategy.cache[image_id] = self.fetch_from_backend(image_id)
+                            print(f"Updated cache for image ID: {image_id}. SSE informed us about the outdated data.")
 
     def set_strategy(self, strategy: CacheStrategy):
         self.strategy = strategy
@@ -109,12 +111,17 @@ class Client:
             logging.info("No requests made yet.")
             return
         hit_rate = (self.cache_hits / total_requests) * 100
-        avg_local_response_time = sum(self.local_response_times) / len(self.local_response_times) if self.local_response_times else 0
-        avg_server_response_time = sum(self.server_response_times) / len(self.server_response_times) if self.server_response_times else 0
+        avg_local_response_time = sum(self.local_response_times) / len(
+            self.local_response_times) if self.local_response_times else 0
+        avg_server_response_time = sum(self.server_response_times) / len(
+            self.server_response_times) if self.server_response_times else 0
+        avg_response_time = sum(self.local_response_times + self.server_response_times) / len(
+            self.local_response_times + self.server_response_times) if self.local_response_times or self.server_response_times else 0
         logging.info(f"Cache Hit Rate: {hit_rate:.2f}%")
         logging.info(f"Cache Miss Rate: {100 - hit_rate:.2f}%")
         logging.info(f"Total Requests: {total_requests}")
         logging.info(f"Cache Hits: {self.cache_hits}")
         logging.info(f"Cache Misses: {self.cache_misses}")
-        logging.info(f"Average Local Response Time: {avg_local_response_time:.4f} seconds")
-        logging.info(f"Average Server Response Time: {avg_server_response_time:.4f} seconds")
+        logging.info(f"Average Local Cache Response Time: {avg_local_response_time:.4f} seconds")
+        logging.info(f"Average Backend Response Time: {avg_server_response_time:.4f} seconds")
+        logging.info(f"Average Response Time: {avg_response_time:.4f} seconds")

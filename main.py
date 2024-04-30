@@ -10,6 +10,8 @@ import random
 import matplotlib.pyplot as plt
 import numpy as np
 import asyncio
+from tqdm import tqdm
+import threading
 
 # import matplotlib
 # matplotlib.use('TkAgg')
@@ -21,13 +23,13 @@ logging.basicConfig(level=logging.INFO)
 
 # Configuration
 random.seed(42)  # For reproducibility
-total_requests = 50000
+total_requests = 1000
 image_id_range = (1, 9999)
 # intitalize array for image id range with all zeros
 image_request_count = np.zeros(image_id_range[1] + 1)
 
 # backend_urls = [r"C:\Users\bensc\Projects\verteilte_system\images"]  # local debug
-backend_urls = [r"192.168.180.65:8002", "192.168.180.66:8002", "192.168.180.67:8002"]  # local debug
+backend_urls = [r"10.8.0.1:8002", "10.8.0.2:8002"]  # local debug
 
 distributions = {
     "gaussian": {"mean": 5000, "std": 1200, "image_request_count": image_request_count.copy()},
@@ -57,10 +59,11 @@ def generate_image_id(distribution_name, params):
 async def simulate_requests(client, distribution_name, params):
     """Simulate requests for a given client and distribution."""
     hit_rates = []
-    for _ in range(total_requests):
+    for _ in tqdm(range(total_requests), total=total_requests, desc=f"Simulating requests for {distribution_name}"):
         image_id = generate_image_id(distribution_name, params)
         # Ensure image ID is within valid range
         image_id = str(max(min(image_id, image_id_range[1]), image_id_range[0]))
+
         await client.request_image(image_id)
         hit_rate = client.cache_hits / (client.cache_hits + client.cache_misses)
         hit_rates.append(hit_rate)
@@ -73,24 +76,29 @@ async def main():
     server_response_times = []
 
     clients = {
-        "LFU": Client(backend_urls, LFUCache(), debug_local=True),
-        "LRU": Client(backend_urls, LRUCache(), debug_local=True),
-        "FIFO": Client(backend_urls, FIFO(), debug_local=True),
-        "RR": Client(backend_urls, RandomReplacement(), debug_local=True)
+        "LFU": Client(backend_urls, LFUCache(), debug_local=False),
+        "LRU": Client(backend_urls, LRUCache(), debug_local=False),
+        "FIFO": Client(backend_urls, FIFO(), debug_local=False),
+        "RR": Client(backend_urls, RandomReplacement(), debug_local=False)
     }
-
+    #tasks = [asyncio.create_task(client.start_listening_to_updates()) for client in clients.values()]
     # Simulate requests and plot results
     for distribution_name, params in distributions.items():
         plt.clf()
         plt.figure(figsize=(10, 6))
 
         for name, client in clients.items():
+            task = asyncio.create_task(client.start_listening_to_updates())
             client.strategy.cache = {}
             client.cache_hits = 0
             client.cache_misses = 0
             client.local_response_times = []
             client.server_response_times = []
-            hit_rates = await simulate_requests(client, distribution_name, params)
+            if not client.debug_local:
+                async with client as async_cm:
+                    hit_rates = await simulate_requests(async_cm, distribution_name, params)
+            else:
+                hit_rates = await simulate_requests(client, distribution_name, params)
             plt.plot(hit_rates, label=name)
 
             server_response_times.append(client.server_response_times)
@@ -98,6 +106,8 @@ async def main():
             print(f"{distribution_name} - {name} - Simulating requests complete")
             client.evaluate_performance()
             print("\n\n")
+            client.listening_for_updates = False
+            await task
 
         plt.xlabel('Request Count')
         plt.ylabel('Cache Hit Rate')
@@ -120,6 +130,8 @@ async def main():
     plt.boxplot(server_response_times)
     plt.title('Server Response Times in ms across all tested distributions and client caching strategies')
 
-
+    # Await all tasks to ensure they complete
+    #for task in tasks:
+    #    await task
 
 asyncio.run(main())

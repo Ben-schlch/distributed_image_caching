@@ -20,6 +20,7 @@ class Client:
         # Attributes for response times
         self.local_response_times = []
         self.server_response_times = []
+        self.listening_for_updates = False
 
     async def __aenter__(self):
         self.session = aiohttp.ClientSession()
@@ -56,9 +57,10 @@ class Client:
                         return image_data, time.time() - start_time
 
                 else:
-                    async with self.session.get(f"{server_url}/distcache/images/{image_id}") as response:
-                        response.raise_for_status()
-                        image_data = await response.read()
+                    response = await self.session.get(f"http://{server_url}/distcache/image/{image_id}")
+                    async with response as resp:
+                        assert resp.status == 200
+                        image_data = await resp.read()
                         self.strategy.put(image_id, image_data)
                         return image_data, time.time() - start_time
             except (aiohttp.ClientError, NotImplementedError):
@@ -79,6 +81,7 @@ class Client:
 
     async def start_listening_to_updates(self):
         tasks = []
+        self.listening_for_updates = True
         for server_url in self.backend_server_urls:
             task = asyncio.create_task(self.listen_for_updates(server_url))
             tasks.append(task)
@@ -89,17 +92,17 @@ class Client:
             return  # Skip in debug mode
 
         async with aiohttp.ClientSession() as session:
-            async with session.get(f"{server_url}/distcache/events", headers={'Accept': 'text/event-stream'}) as response:
-                while True:
+            async with session.get(f"http://{server_url}/distcache/events", headers={'Accept': 'text/event-stream'}) as response:
+                while self.listening_for_updates:
                     line = await response.content.readline()
                     if not line:
-                        break
+                        await asyncio.sleep(0.01)
                     data = line.decode().strip()
                     if data.startswith("data:"):
                         image_id = data.removeprefix("data:").strip()
                         if image_id in self.strategy.cache.keys():
-                            self.strategy.cache[image_id] = self.fetch_from_backend(image_id)
-                            print(f"Updated cache for image ID: {image_id}. SSE informed us about the outdated data.")
+                            self.strategy.cache[image_id] = await self.fetch_from_backend(image_id)
+                            logging.info(f"Updated cache for image ID: {image_id}. SSE informed us about the outdated data.")
 
     def set_strategy(self, strategy: CacheStrategy):
         self.strategy = strategy

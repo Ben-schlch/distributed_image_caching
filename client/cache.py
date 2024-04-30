@@ -29,7 +29,6 @@ class CacheStrategy:
         raise NotImplementedError
 
 
-
 class LRUCache(CacheStrategy):
     """Least Recently Used (LRU) Cache Implementation."""
 
@@ -48,6 +47,7 @@ class LRUCache(CacheStrategy):
         elif len(self.cache) >= self.capacity:
             self.cache.pop(next(iter(self.cache)))  # Remove the least recently used item
         self.cache[key] = (value, time.time())  # Insert item with current timestamp
+
 
 class LFUCache(CacheStrategy):
     """Least Frequently Used (LFU) Cache Implementation."""
@@ -74,7 +74,6 @@ class LFUCache(CacheStrategy):
         """Remove the least frequently used item."""
         min_freq_key = min(self.cache, key=lambda k: self.cache[k][2])  # Find min frequency key
         self.cache.pop(min_freq_key)
-
 
 
 class RandomReplacement(CacheStrategy):

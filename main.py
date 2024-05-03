@@ -10,11 +10,10 @@ import numpy as np
 import asyncio
 from tqdm import tqdm
 
-
 # set logging level to INFO
 import logging
-logging.basicConfig(level=logging.INFO)
 
+logging.basicConfig(level=logging.INFO)
 
 # Configuration
 random.seed(42)  # For reproducibility
@@ -23,7 +22,6 @@ image_id_range = (1, 9999)
 image_request_count = np.zeros(image_id_range[1] + 1)
 # backend_urls = [r"C:\Users\bensc\Projects\verteilte_system\images"]  # local debug
 backend_urls = [r"10.8.0.1:8002", "10.8.0.2:8002"]
-
 
 distributions = {
     "gaussian": {"mean": 5000, "std": 1200, "image_request_count": image_request_count.copy()},
@@ -67,6 +65,9 @@ async def simulate_requests(client, distribution_name, params):
 
 
 async def main():
+    """Main script that simulates the user and therefore the requests via the client module and according to
+    different distributions."""
+
     server_response_times = []
 
     clients = {
@@ -102,17 +103,14 @@ async def main():
             client.listening_for_updates = False
             await task
 
-
+        # Plot cache hit rate over time for each client caching strategy
         plt.xlabel('Request Count')
         plt.ylabel('Cache Hit Rate')
         plt.title(f'Cache Hit Rate over Time by Strategy with {distribution_name.capitalize()} Distribution')
         plt.legend()
-        # plt.show()
 
         # Plot image request count for each distribution
-        # plt.clf()#
         plt.subplot(1, 2, 2)
-        # plt.figure(figsize=(10, 6))
         plt.plot(params["image_request_count"])
         plt.xlabel('Image ID')
         plt.ylabel('Request Count')
@@ -127,8 +125,5 @@ async def main():
     plt.boxplot(server_response_times)
     plt.title('Server Response Times in ms across all tested distributions and client caching strategies')
 
-    # Await all tasks to ensure they complete
-    #for task in tasks:
-    #    await task
 
 asyncio.run(main())

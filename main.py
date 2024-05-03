@@ -11,7 +11,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import asyncio
 from tqdm import tqdm
-import threading
 
 # import matplotlib
 # matplotlib.use('TkAgg')
@@ -130,8 +129,5 @@ async def main():
     plt.boxplot(server_response_times)
     plt.title('Server Response Times in ms across all tested distributions and client caching strategies')
 
-    # Await all tasks to ensure they complete
-    #for task in tasks:
-    #    await task
 
 asyncio.run(main())
